@@ -1,0 +1,292 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAHAKAL BONUS LOCKS</title>
+<style>
+body {
+  margin: 0;
+  height: 100vh;
+  background: linear-gradient(135deg, #1a0026, #250055, #2c006e);
+  background-size: 400% 400%;
+  animation: gradientMove 12s ease infinite;
+  font-family: "Poppins", sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  overflow: hidden;
+}
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+h1 {
+  color: gold;
+  text-shadow: 0 0 10px gold;
+  margin-bottom: 15px;
+}
+
+.container {
+  display: flex;
+  justify-content: center;
+  gap: 25px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.lock-container {
+  position: relative;
+  width: 100px;
+  height: 140px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+.lock-container:hover { transform: scale(1.1); }
+
+.glow-bg {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  top: 10px;
+  left: -10px;
+  z-index: 0;
+  filter: blur(15px);
+  animation: glowPulse 2s infinite alternate;
+}
+@keyframes glowPulse {
+  from { opacity: 0.7; transform: scale(1); }
+  to { opacity: 1; transform: scale(1.1); }
+}
+
+.lock-img {
+  position: relative;
+  width: 100%;
+  z-index: 2;
+}
+
+#mobileInput {
+  width: 200px;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  outline: none;
+  text-align: center;
+  font-size: 16px;
+}
+
+#submitBtn {
+  margin-left: 10px;
+  padding: 8px 16px;
+  background: gold;
+  color: black;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
+}
+#submitBtn:hover { background: orange; }
+
+#message {
+  margin-top: 15px;
+  font-size: 18px;
+  text-align: center;
+}
+
+#adminBtn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: gold;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: black;
+  font-weight: bold;
+}
+#adminPanel {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  background: rgba(0,0,0,0.9);
+  padding: 15px;
+  border-radius: 10px;
+  display: none;
+  width: 280px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+#adminPanel table { width: 100%; color: white; font-size: 12px; }
+#adminPanel th { color: gold; }
+
+#countdown { color: #ffcc00; margin-top: 10px; }
+
+</style>
+</head>
+<body>
+<h1>🔒 MAHAKAL BONUS LOCKS 🔑</h1>
+
+<div>
+  <input id="mobileInput" type="text" maxlength="10" placeholder="Enter 10-digit Mobile">
+  <button id="submitBtn">Submit</button>
+</div>
+<div id="message"></div>
+<div id="countdown"></div>
+
+<div class="container" id="locksContainer"></div>
+
+<button id="adminBtn">Admin</button>
+<div id="adminPanel">
+  <h3>Admin History</h3>
+  <table id="historyTable" border="1">
+    <tr><th>Mobile</th><th>Bonus</th><th>Date</th></tr>
+  </table>
+  <button onclick="clearHistory()">Clear History</button>
+</div>
+
+<audio id="bgMusic" src="sound.mp3" loop></audio>
+<audio id="congratsSound" src="congratulations.mp3"></audio>
+
+<script>
+const lockColors = ["#ff0077", "#00ffcc", "#ffcc00", "#00ccff", "#a020f0"];
+const bonuses = [250, 500];
+const locksContainer = document.getElementById("locksContainer");
+const bgMusic = document.getElementById("bgMusic");
+const congratsSound = document.getElementById("congratsSound");
+const message = document.getElementById("message");
+const countdown = document.getElementById("countdown");
+
+let currentMobile = null;
+let submitted = false;
+
+// ✅ Auto-play background sound with guaranteed fallback
+function playBgMusic() {
+  bgMusic.volume = 0.5;
+  const playPromise = bgMusic.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(() => {
+      document.body.addEventListener("click", () => {
+        bgMusic.play();
+      }, { once: true });
+    });
+  }
+}
+window.addEventListener("load", playBgMusic);
+
+// Create glowing locks
+lockColors.forEach((clr, index) => {
+  const lockDiv = document.createElement("div");
+  lockDiv.className = "lock-container";
+  lockDiv.innerHTML = `
+    <div class="glow-bg" style="background:${clr};"></div>
+    <img src="lock.png" class="lock-img" id="lock${index}">
+  `;
+  lockDiv.onclick = () => tryOpenLock(index);
+  locksContainer.appendChild(lockDiv);
+});
+
+document.getElementById("submitBtn").onclick = () => {
+  const num = document.getElementById("mobileInput").value.trim();
+  if (!/^[0-9]{10}$/.test(num)) {
+    message.textContent = "Please enter a valid 10-digit number.";
+    return;
+  }
+  currentMobile = num;
+  submitted = true;
+  message.textContent = "Now click on any one lock.";
+  countdown.textContent = "";
+};
+
+function tryOpenLock(i) {
+  if (!submitted || !currentMobile) {
+    message.textContent = "Please submit your mobile number first.";
+    return;
+  }
+
+  let userData = JSON.parse(localStorage.getItem(currentMobile));
+
+  // If already used (still in cooldown)
+  if (userData && Date.now() < userData.expiry) {
+    message.innerHTML = `⚠️ This number already used.<br>You already got <b>${userData.bonus}</b> BONUS POINTS.`;
+    startCountdown(userData.expiry);
+    return;
+  }
+
+  // If expired or first time
+  const bonus = userData ? userData.bonus : bonuses[Math.floor(Math.random() * bonuses.length)];
+  message.innerHTML = `🎉 CONGRATULATIONS! YOU GET ${bonus} BONUS POINTS 🎉`;
+  bgMusic.pause();
+  congratsSound.play();
+
+  const expiry = Date.now() + 7*24*60*60*1000;
+  const newData = { mobile: currentMobile, bonus, expiry, date: new Date().toLocaleString() };
+  localStorage.setItem(currentMobile, JSON.stringify(newData));
+
+  // Save in admin history
+  let history = JSON.parse(localStorage.getItem("adminHistory")) || [];
+  history.push(newData);
+  localStorage.setItem("adminHistory", JSON.stringify(history));
+  loadHistory();
+
+  submitted = false;
+  currentMobile = null;
+}
+
+function startCountdown(expiry) {
+  const update = () => {
+    const left = expiry - Date.now();
+    if (left <= 0) {
+      countdown.textContent = "You can try again now!";
+      return;
+    }
+    countdown.textContent = "Try again after: " + formatTime(left);
+    requestAnimationFrame(update);
+  };
+  update();
+}
+
+function formatTime(ms) {
+  const total = Math.floor(ms / 1000);
+  const d = Math.floor(total / 86400);
+  const h = Math.floor((total % 86400) / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return `${d}d ${h}h ${m}m ${s}s`;
+}
+
+// Admin
+const adminBtn = document.getElementById("adminBtn");
+const adminPanel = document.getElementById("adminPanel");
+adminBtn.onclick = () => {
+  const pass = prompt("Enter admin password:");
+  if (pass === "vipin@2025") {
+    adminPanel.style.display = adminPanel.style.display === "block" ? "none" : "block";
+    loadHistory();
+  } else alert("Incorrect password");
+};
+
+function loadHistory() {
+  const table = document.getElementById("historyTable");
+  table.innerHTML = `<tr><th>Mobile</th><th>Bonus</th><th>Date</th></tr>`;
+  const history = JSON.parse(localStorage.getItem("adminHistory")) || [];
+  history.forEach(h => {
+    const row = document.createElement("tr");
+    row.innerHTML = `<td>${h.mobile}</td><td>${h.bonus}</td><td>${h.date}</td>`;
+    table.appendChild(row);
+  });
+}
+
+function clearHistory() {
+  localStorage.removeItem("adminHistory");
+  loadHistory();
+}
+</script>
+</body>
+</html>
